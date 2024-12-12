@@ -1,0 +1,37 @@
+﻿@page "/counter"
+
+@attribute [StreamRendering]
+@attribute [Authorize(Policy = UserPolicy.ADD_PRODUCT)]
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+<p role="status">Current count: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<AuthorizeView Policy="@UserPolicy.ADD_PRODUCT">
+    <Authorized>
+        <button class="btn btn-success">Add Plolicy</button>
+    </Authorized>
+</AuthorizeView>
+<AuthorizeView Policy="@UserPolicy.EDIT_PRODUCT">
+    <Authorized>
+        <button class="btn btn-outline-success">Edit Plolicy</button>
+    </Authorized>
+</AuthorizeView>
+<AuthorizeView Policy="@UserPolicy.DELETE_PRODUCT">
+    <Authorized>
+        <button class="btn btn-outline-danger">Delete Plolicy</button>
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+}

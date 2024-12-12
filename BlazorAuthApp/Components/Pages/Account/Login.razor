@@ -1,0 +1,87 @@
+﻿@page "/login"
+@using BlazorAuthApp.Data
+@using BlazorAuthApp.Models.Entities
+@using BlazorAuthApp.Models.ViewModels
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+
+@inject AppDbContext dbContext
+@inject NavigationManager navigation
+
+<div>
+    <EditForm Model="loginModel" OnValidSubmit="Authenticate" FormName="loginForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="form-group">
+            <InputText @bind-Value="loginModel.UserName" class="form-control" placeholder="Username" />
+        </div>
+        <div class="form-group">
+            <InputText @bind-Value="loginModel.Password" class="form-control" placeholder="Password" type="password" />
+        </div>
+        <div class="form-group">
+            <span class="text-danger">@errmsg</span>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+    </EditForm>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext httpContext { get; set; }
+
+    [SupplyParameterFromForm]
+    public LoginViewModel loginModel { get; set; } = new();
+
+    string? errmsg = string.Empty;
+
+    private async Task Authenticate()
+    {
+        errmsg = "Invalid username or password";
+
+        if (loginModel is null
+            || string.IsNullOrEmpty(loginModel.UserName)
+            || string.IsNullOrEmpty(loginModel.Password)
+        ) return;
+
+        var userAccount = dbContext.UserAccounts
+                            .Where(u => u.UserName.Equals(loginModel.UserName))
+                            .FirstOrDefault();
+
+        if (userAccount is null) return;
+
+        if (!VerifyPassword(userAccount, loginModel)) return;
+
+        errmsg = string.Empty;
+
+        var claims = new List<Claim> { new Claim(type: ClaimTypes.Name, userAccount.UserName), };
+
+        var userAccountPolicies = dbContext.UserAccountPolicies
+                                    .Where(x => x.UserAccountId.Equals(userAccount.Id)
+                                            && x.IsEnabled).ToList();
+        foreach (var policy in userAccountPolicies)
+        {
+            claims.Add(new(policy.UserPolicy, "true"));
+        }
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        
+        await httpContext.SignInAsync(principal);
+        navigation.NavigateTo("/");
+
+    }
+
+    bool VerifyPassword(UserAccount userAccount, LoginViewModel loginModel)
+    {
+        return userAccount.Password.Equals(loginModel.Password);
+        // var passwordHasher = new PasswordHasher<UserAccount>();
+        // PasswordVerificationResult passwordResult =
+        //     passwordHasher.VerifyHashedPassword(userAccount, userAccount.Password, loginModel.Password);
+        // return !passwordResult.Equals(PasswordVerificationResult.Failed);
+    }
+
+}
